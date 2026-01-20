@@ -1,0 +1,6 @@
+# Jira credentials - DO NOT COMMIT
+config.json
+
+# Python
+__pycache__/
+*.py[cod]

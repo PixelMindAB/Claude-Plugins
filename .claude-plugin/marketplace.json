@@ -1,0 +1,20 @@
+{
+  "name": "pixelmind-plugins",
+  "owner": {
+    "name": "PixelMind AB",
+    "url": "https://github.com/PixelMindAB"
+  },
+  "plugins": [
+    {
+      "name": "jira-sprint-automation",
+      "source": ".",
+      "description": "Automate Jira sprint implementation - fetches active sprint issues and implements them with status transitions",
+      "version": "1.0.0",
+      "author": {
+        "name": "PixelMind AB"
+      },
+      "keywords": ["jira", "sprint", "agile", "automation"],
+      "license": "MIT"
+    }
+  ]
+}

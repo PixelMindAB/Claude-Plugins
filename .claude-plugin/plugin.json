@@ -1,0 +1,13 @@
+{
+  "name": "jira-sprint-automation",
+  "description": "Automate Jira sprint implementation with Claude Code. Fetches active sprint issues and implements them one by one, transitioning statuses and updating issues with results.",
+  "version": "1.0.0",
+  "author": {
+    "name": "PixelMind AB",
+    "url": "https://github.com/PixelMindAB"
+  },
+  "homepage": "https://github.com/PixelMindAB/Claude-Plugins",
+  "repository": "https://github.com/PixelMindAB/Claude-Plugins",
+  "license": "MIT",
+  "keywords": ["jira", "sprint", "agile", "automation", "project-management"]
+}
