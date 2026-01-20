@@ -9,21 +9,49 @@ A collection of Claude Code plugins by PixelMind AB.
 Connect Claude Code to Jira for sprint automation and issue management.
 
 **Included skills:**
+
 - `/implement-sprint` - Automate sprint implementation
 
 ## Installation
 
-### Method 1: Add as Marketplace (Recommended)
+### Step 1: Add Marketplace
 
 ```bash
 /plugin marketplace add PixelMindAB/Claude-Plugins
+```
+
+### Step 2: Install Plugin
+
+```bash
 /plugin install jira-connector
 ```
 
-### Method 2: Manual Installation
+### Installation Scopes
 
-1. Clone this repository
-2. Copy the desired skill folder to your project's `.claude/skills/` directory
+Choose where to install the plugin using the `--scope` flag:
+
+```bash
+# Global (default) - available in all your projects
+/plugin install jira-connector
+
+# Project - shared with team (committed to git)
+/plugin install jira-connector --scope project
+
+# Local - personal, this project only (not committed)
+/plugin install jira-connector --scope local
+```
+
+| Scope | Settings File | In Git | Use Case |
+|-------|---------------|--------|----------|
+| `user` | `~/.claude/settings.json` | N/A | Personal, all projects |
+| `project` | `.claude/settings.json` | Yes | Shared with team |
+| `local` | `.claude/settings.local.json` | No | Personal, this project only |
+
+**Recommendation:** Use `--scope project` for team projects. Each person's Jira credentials are stored separately in the skill's `config.json` (gitignored).
+
+### Manual Installation
+
+Alternatively, clone and copy:
 
 ```bash
 git clone https://github.com/PixelMindAB/Claude-Plugins.git
@@ -43,6 +71,7 @@ cp -r Claude-Plugins/skills/implement-sprint .claude/skills/
 ### Setup
 
 1. Install dependencies:
+
    ```bash
    pip install requests
    ```
@@ -51,7 +80,7 @@ cp -r Claude-Plugins/skills/implement-sprint .claude/skills/
    - **Jira Domain** - e.g., `yourcompany.atlassian.net`
    - **Project Key** - e.g., `DEMO`, `PROJ`
    - **Email** - Your Atlassian account email
-   - **API Token** - From https://id.atlassian.com/manage-profile/security/api-tokens
+   - **API Token** - From <https://id.atlassian.com/manage-profile/security/api-tokens>
 
 3. Credentials are stored in `config.json` (gitignored)
 
@@ -62,6 +91,7 @@ cp -r Claude-Plugins/skills/implement-sprint .claude/skills/
 ```
 
 The command will:
+
 1. Check configuration (prompt for setup if needed)
 2. Fetch active sprint issues
 3. For each "To Do" issue:
@@ -74,7 +104,7 @@ The command will:
 
 ### File Structure
 
-```
+```text
 skills/implement-sprint/
 ├── SKILL.md              # Skill definition
 ├── jira_client.py        # Self-contained Jira API client
