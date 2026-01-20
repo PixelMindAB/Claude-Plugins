@@ -4,9 +4,12 @@ A collection of Claude Code plugins by PixelMind AB.
 
 ## Available Plugins
 
-### jira-sprint-automation
+### jira-connector
 
-Automate Jira sprint implementation with Claude Code. This plugin fetches active sprint issues and implements them one by one, transitioning statuses (To Do → In Progress → Done) and updating issues with implementation details and test results.
+Connect Claude Code to Jira for sprint automation and issue management.
+
+**Included skills:**
+- `/implement-sprint` - Automate sprint implementation
 
 ## Installation
 
@@ -14,7 +17,7 @@ Automate Jira sprint implementation with Claude Code. This plugin fetches active
 
 ```bash
 /plugin marketplace add PixelMindAB/Claude-Plugins
-/plugin install jira-sprint-automation@PixelMindAB/Claude-Plugins
+/plugin install jira-connector
 ```
 
 ### Method 2: Manual Installation
@@ -27,7 +30,7 @@ git clone https://github.com/PixelMindAB/Claude-Plugins.git
 cp -r Claude-Plugins/skills/implement-sprint .claude/skills/
 ```
 
-## Plugin: jira-sprint-automation
+## Plugin: jira-connector
 
 ### Features
 
