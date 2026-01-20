@@ -6,114 +6,190 @@ disable-model-invocation: true
 
 # Implement Active Sprint Issues
 
-You are implementing issues from the active Jira sprint. This skill is self-contained with its own Jira client.
-
-## Dependencies
-
-This skill requires the `requests` library. Install with:
-```bash
-pip install -r $SKILL_DIR/requirements.txt
-```
-
-## Configuration Check
-
-Current config status:
-!`python3 $SKILL_DIR/sprint_status.py 2>&1 | head -1`
+You are implementing issues from the active Jira sprint.
 
 ## First-Time Setup
 
-If the config status shows "NOT_CONFIGURED" or "INCOMPLETE", you need to help the user set up their Jira credentials.
+Before using this command, the user needs a `jira-config.json` file in their project root:
 
-Ask the user for:
-1. **Jira Domain** - e.g., `yourcompany.atlassian.net`
-2. **Project Key** - e.g., `DEMO`, `PROJ`
-3. **Email** - Their Atlassian account email
-4. **API Token** - From https://id.atlassian.com/manage-profile/security/api-tokens
-
-Then save the config:
-```bash
-cat > $SKILL_DIR/config.json << 'EOF'
+```json
 {
-  "jira_domain": "DOMAIN_HERE",
-  "project_key": "PROJECT_KEY_HERE",
-  "email": "EMAIL_HERE",
-  "api_token": "TOKEN_HERE"
+  "jira_domain": "yourcompany.atlassian.net",
+  "project_key": "DEMO",
+  "email": "your-email@example.com",
+  "api_token": "your-api-token"
 }
-EOF
 ```
 
-After setup, verify by running:
+To get an API token: https://id.atlassian.com/manage-profile/security/api-tokens
+
+If `jira-config.json` doesn't exist, ask the user for these 4 values and create it.
+
+## Check Sprint Status
+
+Run this to get active sprint issues:
+
 ```bash
-python3 $SKILL_DIR/sprint_status.py
+python3 -c "
+import json, requests
+from requests.auth import HTTPBasicAuth
+
+with open('jira-config.json') as f:
+    cfg = json.load(f)
+
+auth = HTTPBasicAuth(cfg['email'], cfg['api_token'])
+headers = {'Accept': 'application/json'}
+base = f\"https://{cfg['jira_domain']}\"
+
+# Get board
+r = requests.get(f\"{base}/rest/agile/1.0/board\", headers=headers, auth=auth, params={'projectKeyOrId': cfg['project_key']})
+boards = r.json().get('values', [])
+if not boards:
+    print('No board found')
+    exit()
+board_id = boards[0]['id']
+
+# Get active sprint
+r = requests.get(f\"{base}/rest/agile/1.0/board/{board_id}/sprint\", headers=headers, auth=auth, params={'state': 'active'})
+sprints = r.json().get('values', [])
+if not sprints:
+    print('No active sprint')
+    exit()
+sprint = sprints[0]
+print(f\"Sprint: {sprint['name']}\")
+
+# Get issues
+r = requests.get(f\"{base}/rest/agile/1.0/sprint/{sprint['id']}/issue\", headers=headers, auth=auth, params={'fields': 'summary,status'})
+for issue in r.json().get('issues', []):
+    status = issue['fields']['status']['name']
+    print(f\"{issue['key']} [{status}]: {issue['fields']['summary']}\")
+"
 ```
-
-## Current Sprint Status
-
-Active sprint issues:
-!`python3 $SKILL_DIR/sprint_status.py 2>&1`
 
 ## Workflow
 
 For each issue in "To Do" status:
 
-### 1. Start Work
-- Read the issue details:
-```bash
-python3 $SKILL_DIR/get_issue.py ISSUE_KEY
-```
-- Transition to "In Progress":
+### 1. Get Issue Details
+
 ```bash
 python3 -c "
-import sys; sys.path.insert(0, '$SKILL_DIR')
-from jira_client import JiraClient
-client = JiraClient()
-client.transition_issue('ISSUE_KEY', 'In Progress')
-print('Transitioned to In Progress')
+import json, requests
+from requests.auth import HTTPBasicAuth
+
+ISSUE_KEY = 'DEMO-1'  # Replace with actual issue key
+
+with open('jira-config.json') as f:
+    cfg = json.load(f)
+
+auth = HTTPBasicAuth(cfg['email'], cfg['api_token'])
+r = requests.get(f\"https://{cfg['jira_domain']}/rest/api/3/issue/{ISSUE_KEY}\", auth=auth)
+issue = r.json()
+fields = issue['fields']
+print(f\"Issue: {issue['key']}\")
+print(f\"Summary: {fields['summary']}\")
+print(f\"Status: {fields['status']['name']}\")
+
+desc = fields.get('description')
+if desc:
+    for block in desc.get('content', []):
+        if block.get('type') == 'paragraph':
+            for item in block.get('content', []):
+                if item.get('type') == 'text':
+                    print(f\"Description: {item.get('text')}\")
 "
 ```
 
-### 2. Implement
-- Analyze the issue summary and description
-- Implement the required changes in the codebase
-- Follow existing code patterns and conventions
+### 2. Transition to In Progress
 
-### 3. Test
-- Write tests if needed
-- Run existing tests to ensure nothing is broken
-- Verify the implementation works as expected
-
-### 4. Update Issue with Results
-- Update the issue description with implementation details and test results:
 ```bash
 python3 -c "
-import sys; sys.path.insert(0, '$SKILL_DIR')
-from jira_client import JiraClient
-client = JiraClient()
-client.update_issue('ISSUE_KEY', description='Implementation: ... | Testing: ... | Result: PASSED')
+import json, requests
+from requests.auth import HTTPBasicAuth
+
+ISSUE_KEY = 'DEMO-1'  # Replace with actual issue key
+
+with open('jira-config.json') as f:
+    cfg = json.load(f)
+
+auth = HTTPBasicAuth(cfg['email'], cfg['api_token'])
+headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
+base = f\"https://{cfg['jira_domain']}/rest/api/3\"
+
+# Get transitions
+r = requests.get(f\"{base}/issue/{ISSUE_KEY}/transitions\", auth=auth, headers=headers)
+for t in r.json().get('transitions', []):
+    if t['to']['name'].lower() == 'in progress':
+        requests.post(f\"{base}/issue/{ISSUE_KEY}/transitions\", auth=auth, headers=headers, json={'transition': {'id': t['id']}})
+        print('Transitioned to In Progress')
+        break
+"
+```
+
+### 3. Implement the Issue
+
+- Read the issue summary and description
+- Implement the required changes in the codebase
+- Follow existing code patterns
+
+### 4. Test the Implementation
+
+- Run relevant tests
+- Verify the changes work correctly
+
+### 5. Update Issue with Results
+
+```bash
+python3 -c "
+import json, requests
+from requests.auth import HTTPBasicAuth
+
+ISSUE_KEY = 'DEMO-1'  # Replace with actual issue key
+DESCRIPTION = 'Implementation: [describe what was done] | Testing: [how it was tested] | Result: PASSED'
+
+with open('jira-config.json') as f:
+    cfg = json.load(f)
+
+auth = HTTPBasicAuth(cfg['email'], cfg['api_token'])
+headers = {'Content-Type': 'application/json'}
+
+payload = {'fields': {'description': {'type': 'doc', 'version': 1, 'content': [{'type': 'paragraph', 'content': [{'type': 'text', 'text': DESCRIPTION}]}]}}}
+requests.put(f\"https://{cfg['jira_domain']}/rest/api/3/issue/{ISSUE_KEY}\", auth=auth, headers=headers, json=payload)
 print('Issue updated')
 "
 ```
 
-### 5. Complete
-- Transition to "Done":
+### 6. Transition to Done
+
 ```bash
 python3 -c "
-import sys; sys.path.insert(0, '$SKILL_DIR')
-from jira_client import JiraClient
-client = JiraClient()
-client.transition_issue('ISSUE_KEY', 'Done')
-print('Transitioned to Done')
+import json, requests
+from requests.auth import HTTPBasicAuth
+
+ISSUE_KEY = 'DEMO-1'  # Replace with actual issue key
+
+with open('jira-config.json') as f:
+    cfg = json.load(f)
+
+auth = HTTPBasicAuth(cfg['email'], cfg['api_token'])
+headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
+base = f\"https://{cfg['jira_domain']}/rest/api/3\"
+
+r = requests.get(f\"{base}/issue/{ISSUE_KEY}/transitions\", auth=auth, headers=headers)
+for t in r.json().get('transitions', []):
+    if t['to']['name'].lower() == 'done':
+        requests.post(f\"{base}/issue/{ISSUE_KEY}/transitions\", auth=auth, headers=headers, json={'transition': {'id': t['id']}})
+        print('Transitioned to Done')
+        break
 "
 ```
 
-### 6. Repeat
-- Move to the next "To Do" issue
-- Continue until all issues are done
+### 7. Repeat
 
-## Important Notes
-- Replace `ISSUE_KEY` with the actual issue key (e.g., DEMO-11)
-- Replace `$SKILL_DIR` with the actual skill directory path when running commands
+Move to the next "To Do" issue and continue until all issues are complete.
+
+## Notes
+
+- Replace `ISSUE_KEY = 'DEMO-1'` with the actual issue key in each command
+- The `jira-config.json` file should be added to `.gitignore` to protect credentials
 - Always test changes before marking as Done
-- If an issue cannot be implemented, leave a comment explaining why and skip it
-- Ask for clarification if issue requirements are unclear
-- The config.json file is gitignored to protect credentials
