@@ -12,13 +12,13 @@ You are implementing issues from the active Jira sprint. This skill is self-cont
 
 This skill requires the `requests` library. Install with:
 ```bash
-pip install -r $SKILL_DIR/requirements.txt
+pip install requests
 ```
 
 ## Configuration Check
 
 Current config status:
-!`python3 $SKILL_DIR/sprint_status.py 2>&1 | head -1`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py 2>&1 | head -1`
 
 ## First-Time Setup
 
@@ -32,7 +32,7 @@ Ask the user for:
 
 Then save the config:
 ```bash
-cat > $SKILL_DIR/config.json << 'EOF'
+cat > ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/config.json << 'EOF'
 {
   "jira_domain": "DOMAIN_HERE",
   "project_key": "PROJECT_KEY_HERE",
@@ -44,13 +44,13 @@ EOF
 
 After setup, verify by running:
 ```bash
-python3 $SKILL_DIR/sprint_status.py
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py
 ```
 
 ## Current Sprint Status
 
 Active sprint issues:
-!`python3 $SKILL_DIR/sprint_status.py 2>&1`
+!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py 2>&1`
 
 ## Workflow
 
@@ -59,12 +59,12 @@ For each issue in "To Do" status:
 ### 1. Start Work
 - Read the issue details:
 ```bash
-python3 $SKILL_DIR/get_issue.py ISSUE_KEY
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/get_issue.py ISSUE_KEY
 ```
 - Transition to "In Progress":
 ```bash
 python3 -c "
-import sys; sys.path.insert(0, '$SKILL_DIR')
+import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
 from jira_client import JiraClient
 client = JiraClient()
 client.transition_issue('ISSUE_KEY', 'In Progress')
@@ -86,7 +86,7 @@ print('Transitioned to In Progress')
 - Update the issue description with implementation details and test results:
 ```bash
 python3 -c "
-import sys; sys.path.insert(0, '$SKILL_DIR')
+import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
 from jira_client import JiraClient
 client = JiraClient()
 client.update_issue('ISSUE_KEY', description='Implementation: ... | Testing: ... | Result: PASSED')
@@ -98,7 +98,7 @@ print('Issue updated')
 - Transition to "Done":
 ```bash
 python3 -c "
-import sys; sys.path.insert(0, '$SKILL_DIR')
+import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
 from jira_client import JiraClient
 client = JiraClient()
 client.transition_issue('ISSUE_KEY', 'Done')
@@ -112,7 +112,6 @@ print('Transitioned to Done')
 
 ## Important Notes
 - Replace `ISSUE_KEY` with the actual issue key (e.g., DEMO-11)
-- Replace `$SKILL_DIR` with the actual skill directory path when running commands
 - Always test changes before marking as Done
 - If an issue cannot be implemented, leave a comment explaining why and skip it
 - Ask for clarification if issue requirements are unclear
