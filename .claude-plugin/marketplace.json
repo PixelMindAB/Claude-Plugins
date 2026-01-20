@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "jira-sprint-automation",
-      "source": ".",
+      "source": "./",
       "description": "Automate Jira sprint implementation - fetches active sprint issues and implements them with status transitions",
       "version": "1.0.0",
       "author": {
