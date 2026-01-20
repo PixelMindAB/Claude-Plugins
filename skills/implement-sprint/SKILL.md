@@ -6,25 +6,32 @@ disable-model-invocation: true
 
 # Implement Active Sprint Issues
 
-You are implementing issues from the active Jira sprint. This skill is self-contained with its own Jira client.
+You are implementing issues from the active Jira sprint.
 
-## Dependencies
+## Step 1: Environment Setup
 
-This skill requires the `requests` library. Install with:
+First, check if the plugin environment is set up. Run this command:
+
 ```bash
-pip install requests
+if [ ! -d "${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv" ]; then
+  echo "Setting up plugin environment..."
+  python3 -m venv ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv
+  ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/pip install requests
+  echo "Environment ready!"
+else
+  echo "Environment already set up."
+fi
 ```
 
-## Configuration Check
+## Step 2: Check Configuration
 
-Current config status:
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py 2>&1 | head -1`
+Check if Jira is configured:
 
-## First-Time Setup
+```bash
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py
+```
 
-If the config status shows "NOT_CONFIGURED" or "INCOMPLETE", you need to help the user set up their Jira credentials.
-
-Ask the user for:
+If it shows "NOT_CONFIGURED" or "INCOMPLETE", ask the user for:
 1. **Jira Domain** - e.g., `yourcompany.atlassian.net`
 2. **Project Key** - e.g., `DEMO`, `PROJ`
 3. **Email** - Their Atlassian account email
@@ -42,15 +49,13 @@ cat > ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/config.json << 'EOF'
 EOF
 ```
 
-After setup, verify by running:
+## Step 3: Get Sprint Issues
+
+Once configured, get the active sprint issues:
+
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py
 ```
-
-## Current Sprint Status
-
-Active sprint issues:
-!`python3 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py 2>&1`
 
 ## Workflow
 
@@ -59,11 +64,11 @@ For each issue in "To Do" status:
 ### 1. Start Work
 - Read the issue details:
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/get_issue.py ISSUE_KEY
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/get_issue.py ISSUE_KEY
 ```
 - Transition to "In Progress":
 ```bash
-python3 -c "
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python -c "
 import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
 from jira_client import JiraClient
 client = JiraClient()
@@ -83,9 +88,8 @@ print('Transitioned to In Progress')
 - Verify the implementation works as expected
 
 ### 4. Update Issue with Results
-- Update the issue description with implementation details and test results:
 ```bash
-python3 -c "
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python -c "
 import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
 from jira_client import JiraClient
 client = JiraClient()
@@ -95,9 +99,8 @@ print('Issue updated')
 ```
 
 ### 5. Complete
-- Transition to "Done":
 ```bash
-python3 -c "
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python -c "
 import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
 from jira_client import JiraClient
 client = JiraClient()
@@ -107,12 +110,9 @@ print('Transitioned to Done')
 ```
 
 ### 6. Repeat
-- Move to the next "To Do" issue
-- Continue until all issues are done
+Move to the next "To Do" issue and continue until all issues are complete.
 
-## Important Notes
+## Notes
 - Replace `ISSUE_KEY` with the actual issue key (e.g., DEMO-11)
 - Always test changes before marking as Done
-- If an issue cannot be implemented, leave a comment explaining why and skip it
-- Ask for clarification if issue requirements are unclear
 - The config.json file is gitignored to protect credentials
