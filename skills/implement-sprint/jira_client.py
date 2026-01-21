@@ -10,22 +10,61 @@ from requests.auth import HTTPBasicAuth
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).parent
-CONFIG_FILE = SKILL_DIR / "config.json"
+PLUGIN_CONFIG_FILE = SKILL_DIR / "config.json"
+PROJECT_CONFIG_NAME = ".jira_config.json"
+
+
+def get_project_config_path() -> Path:
+    """Get the path to the project-level config file in current working directory."""
+    return Path.cwd() / PROJECT_CONFIG_NAME
+
+
+def load_plugin_config() -> dict:
+    """Load credentials from plugin-level config.json."""
+    if PLUGIN_CONFIG_FILE.exists():
+        with open(PLUGIN_CONFIG_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def load_project_config() -> dict:
+    """Load project_key from project-level .jira_config.json."""
+    project_config = get_project_config_path()
+    if project_config.exists():
+        with open(project_config) as f:
+            return json.load(f)
+    return {}
 
 
 def load_config() -> dict:
-    """Load configuration from config.json."""
-    if not CONFIG_FILE.exists():
-        return {}
+    """Load merged configuration.
 
-    with open(CONFIG_FILE) as f:
-        return json.load(f)
+    - Credentials (jira_domain, email, api_token) from plugin config.json
+    - Project key (project_key) from project-level .jira_config.json
+    """
+    config = load_plugin_config()
+    project_config = load_project_config()
+
+    # Project config overrides project_key only
+    if project_config.get("project_key"):
+        config["project_key"] = project_config["project_key"]
+
+    return config
 
 
-def save_config(config: dict) -> None:
-    """Save configuration to config.json."""
-    with open(CONFIG_FILE, "w") as f:
+def save_plugin_config(config: dict) -> Path:
+    """Save credentials to plugin config.json."""
+    with open(PLUGIN_CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=2)
+    return PLUGIN_CONFIG_FILE
+
+
+def save_project_config(project_key: str) -> Path:
+    """Save project_key to .jira_config.json in current directory."""
+    config_path = get_project_config_path()
+    with open(config_path, "w") as f:
+        json.dump({"project_key": project_key}, f, indent=2)
+    return config_path
 
 
 def is_configured() -> bool:
@@ -37,16 +76,23 @@ def is_configured() -> bool:
 
 def get_config_status() -> str:
     """Get a human-readable config status."""
-    config = load_config()
-    if not config:
-        return "NOT_CONFIGURED"
+    plugin_config = load_plugin_config()
+    project_config = load_project_config()
 
-    required = ["jira_domain", "project_key", "email", "api_token"]
-    missing = [key for key in required if not config.get(key)]
+    # Check credentials in plugin config
+    credentials = ["jira_domain", "email", "api_token"]
+    missing_creds = [key for key in credentials if not plugin_config.get(key)]
 
-    if missing:
-        return f"INCOMPLETE (missing: {', '.join(missing)})"
-    return "CONFIGURED"
+    # Check project_key in project config
+    has_project_key = bool(project_config.get("project_key"))
+
+    if missing_creds:
+        return f"CREDENTIALS_MISSING (missing: {', '.join(missing_creds)})"
+
+    if not has_project_key:
+        return f"PROJECT_NOT_CONFIGURED (create {PROJECT_CONFIG_NAME} with project_key)"
+
+    return f"CONFIGURED (project: {project_config['project_key']})"
 
 
 class JiraClient:
@@ -176,6 +222,50 @@ class JiraClient:
         sprints = self.get_sprints(board_id, state="active")
         return sprints[0] if sprints else None
 
+    def start_sprint(self, sprint_id: int, duration_days: int = 14) -> bool:
+        """Start a sprint by setting its state to active.
+
+        Args:
+            sprint_id: The ID of the sprint to start
+            duration_days: Sprint duration in days (default: 14)
+
+        Returns:
+            True if successful
+        """
+        from datetime import datetime, timedelta
+
+        start_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        end_date = (datetime.now() + timedelta(days=duration_days)).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+        url = f"{self.agile_url}/sprint/{sprint_id}"
+        response = requests.post(
+            url, headers=self.headers, auth=self.auth,
+            json={
+                'state': 'active',
+                'startDate': start_date,
+                'endDate': end_date
+            }
+        )
+        response.raise_for_status()
+        return True
+
+    def close_sprint(self, sprint_id: int) -> bool:
+        """Close a sprint by setting its state to closed.
+
+        Args:
+            sprint_id: The ID of the sprint to close
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.agile_url}/sprint/{sprint_id}"
+        response = requests.post(
+            url, headers=self.headers, auth=self.auth,
+            json={'state': 'closed'}
+        )
+        response.raise_for_status()
+        return True
+
     def get_sprint_issues(self, sprint_id: int) -> list:
         """Get all issues in a sprint."""
         url = f"{self.agile_url}/sprint/{sprint_id}/issue"
@@ -196,3 +286,120 @@ class JiraClient:
 
         issues = self.get_sprint_issues(sprint["id"])
         return {"sprint": sprint, "issues": issues}
+
+    def add_comment(self, issue_key: str, comment: str) -> bool:
+        """Add a comment to an issue.
+
+        Args:
+            issue_key: The issue key (e.g., 'DEMO-18')
+            comment: The comment text to add
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.base_url}/issue/{issue_key}/comment"
+        body = {
+            "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": comment}]
+                    }
+                ]
+            }
+        }
+        response = requests.post(url, headers=self.headers, auth=self.auth, json=body)
+        response.raise_for_status()
+        return True
+
+    def get_comments(self, issue_key: str) -> list:
+        """Get all comments for an issue.
+
+        Args:
+            issue_key: The issue key (e.g., 'DEMO-18')
+
+        Returns:
+            List of comments
+        """
+        url = f"{self.base_url}/issue/{issue_key}/comment"
+        response = requests.get(url, headers=self.headers, auth=self.auth)
+        response.raise_for_status()
+        return response.json().get("comments", [])
+
+    def create_issue(self, summary: str, issue_type: str = "Task", description: str = None) -> dict:
+        """Create a new issue in the project.
+
+        Args:
+            summary: The issue summary/title
+            issue_type: The issue type (default: "Task")
+            description: Optional description
+
+        Returns:
+            The created issue data including key and id
+        """
+        url = f"{self.base_url}/issue"
+        fields = {
+            "project": {"key": self.project_key},
+            "summary": summary,
+            "issuetype": {"name": issue_type}
+        }
+
+        if description:
+            fields["description"] = {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": description}]
+                    }
+                ]
+            }
+
+        response = requests.post(url, headers=self.headers, auth=self.auth, json={"fields": fields})
+        response.raise_for_status()
+        return response.json()
+
+    def create_sprint(self, name: str, board_id: int = None) -> dict:
+        """Create a new sprint.
+
+        Args:
+            name: The sprint name
+            board_id: The board ID (if not provided, uses project's board)
+
+        Returns:
+            The created sprint data including id
+        """
+        if not board_id:
+            board = self.get_board_for_project()
+            if not board:
+                raise ValueError("No board found for project")
+            board_id = board["id"]
+
+        url = f"{self.agile_url}/sprint"
+        response = requests.post(
+            url, headers=self.headers, auth=self.auth,
+            json={"name": name, "originBoardId": board_id}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def move_issues_to_sprint(self, sprint_id: int, issue_keys: list) -> bool:
+        """Move issues to a sprint.
+
+        Args:
+            sprint_id: The sprint ID
+            issue_keys: List of issue keys to move
+
+        Returns:
+            True if successful
+        """
+        url = f"{self.agile_url}/sprint/{sprint_id}/issue"
+        response = requests.post(
+            url, headers=self.headers, auth=self.auth,
+            json={"issues": issue_keys}
+        )
+        response.raise_for_status()
+        return True
