@@ -1,7 +1,7 @@
 {
   "name": "jira-connector",
   "description": "Connect Claude Code to Jira for sprint automation and issue management. Includes /implement-sprint command.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "PixelMind AB",
     "url": "https://github.com/PixelMindAB"
