@@ -48,12 +48,21 @@ JiraClient().transition_issue('ISSUE_KEY', 'In Progress')
 
 4. **Test** the implementation
 
-5. **Update issue** with results:
+5. **Add comment** with implementation details and test results (never overwrite description):
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python -c "
 import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
 from jira_client import JiraClient
-JiraClient().update_issue('ISSUE_KEY', description='Implementation: ... | Testing: ... | Result: PASSED')
+JiraClient().add_comment('ISSUE_KEY', '''## Implementation
+- Files modified: ...
+
+## Test Procedure
+\`\`\`bash
+[runnable test commands]
+\`\`\`
+
+## Result: PASSED/FAILED
+''')
 "
 ```
 
