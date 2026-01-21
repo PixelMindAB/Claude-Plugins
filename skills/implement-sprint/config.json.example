@@ -1,6 +1,0 @@
-{
-  "jira_domain": "your-domain.atlassian.net",
-  "project_key": "PROJ",
-  "email": "your-email@example.com",
-  "api_token": "your-api-token-from-atlassian"
-}

@@ -28,18 +28,7 @@ Connect Claude Code to Jira for sprint automation and issue management.
 
 ### Installation Scopes
 
-Choose where to install the plugin using the `--scope` flag:
-
-```bash
-# Global (default) - available in all your projects
-/plugin install jira-connector
-
-# Project - shared with team (committed to git)
-/plugin install jira-connector --scope project
-
-# Local - personal, this project only (not committed)
-/plugin install jira-connector --scope local
-```
+When installing, the wizard prompts you to choose a scope:
 
 | Scope | Settings File | In Git | Use Case |
 |-------|---------------|--------|----------|
@@ -47,7 +36,7 @@ Choose where to install the plugin using the `--scope` flag:
 | `project` | `.claude/settings.json` | Yes | Shared with team |
 | `local` | `.claude/settings.local.json` | No | Personal, this project only |
 
-**Recommendation:** Use `--scope project` for team projects. Each person's Jira credentials are stored separately in the skill's `config.json` (gitignored).
+**Recommendation:** Choose `project` scope for team projects. Each person's Jira credentials are stored separately in the skill's `config.json` (gitignored).
 
 ### Manual Installation
 
@@ -55,7 +44,7 @@ Alternatively, clone and copy:
 
 ```bash
 git clone https://github.com/PixelMindAB/Claude-Plugins.git
-cp -r Claude-Plugins/skills/implement-sprint .claude/skills/
+cp -r Claude-Plugins/plugins/jira-connector .claude/plugins/
 ```
 
 ## Plugin: jira-connector
@@ -105,14 +94,28 @@ The command will:
 ### File Structure
 
 ```text
-skills/implement-sprint/
-├── SKILL.md              # Skill definition
-├── jira_client.py        # Self-contained Jira API client
-├── get_issue.py          # Get issue details
-├── sprint_status.py      # Check sprint status
-├── config.json.example   # Configuration template
-├── requirements.txt      # Python dependencies
-└── .gitignore            # Ignores config.json
+plugins/jira-connector/
+├── .claude-plugin/
+│   └── plugin.json       # Plugin metadata
+├── docs/
+│   └── jira-connector.md # Detailed documentation
+└── skills/
+    └── implement-sprint/
+        ├── SKILL.md              # Skill definition
+        ├── jira_client.py        # Jira API client with CLI
+        ├── requirements.txt      # Python dependencies
+        └── .gitignore            # Ignores config.json, venv/
+```
+
+### CLI Commands
+
+The `jira_client.py` provides a CLI interface:
+
+```bash
+python jira_client.py status              # Check config and list sprint issues
+python jira_client.py get-issue DEMO-1    # Get issue details
+python jira_client.py transition DEMO-1 "In Progress"  # Transition issue
+python jira_client.py add-comment DEMO-1 "Comment"     # Add comment
 ```
 
 ## License

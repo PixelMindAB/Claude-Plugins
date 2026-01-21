@@ -36,7 +36,7 @@ fi
 Check if Jira is configured:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/jira_client.py status
 ```
 
 ### If "CREDENTIALS_MISSING"
@@ -77,7 +77,7 @@ This allows different projects to connect to different Jira projects while shari
 Once configured, get the active sprint issues:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/sprint_status.py
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/jira_client.py status
 ```
 
 ### If "No active sprint found"
@@ -95,17 +95,11 @@ For each issue in "To Do" status:
 ### 1. Start Work
 - Read the issue details:
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/get_issue.py ISSUE_KEY
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/jira_client.py get-issue ISSUE_KEY
 ```
 - Transition to "In Progress":
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python -c "
-import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
-from jira_client import JiraClient
-client = JiraClient()
-client.transition_issue('ISSUE_KEY', 'In Progress')
-print('Transitioned to In Progress')
-"
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/jira_client.py transition ISSUE_KEY "In Progress"
 ```
 
 ### 2. Implement
@@ -130,11 +124,7 @@ Add a comment documenting:
 - Test result (PASSED or FAILED with details)
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python -c "
-import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
-from jira_client import JiraClient
-client = JiraClient()
-client.add_comment('ISSUE_KEY', '''## Implementation
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/jira_client.py add-comment ISSUE_KEY "## Implementation
 - Created file: example.py
 - Location: /path/to/example.py
 - Content: Brief description of what was added/changed
@@ -155,20 +145,12 @@ Expected output:
 
 ## Test Result: PASSED
 - File exists: Yes (with details)
-- Functionality verified: Description of what was confirmed''')
-print('Comment added')
-"
+- Functionality verified: Description of what was confirmed"
 ```
 
 ### 5. Complete
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python -c "
-import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
-from jira_client import JiraClient
-client = JiraClient()
-client.transition_issue('ISSUE_KEY', 'Done')
-print('Transitioned to Done')
-"
+${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/venv/bin/python ${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint/jira_client.py transition ISSUE_KEY "Done"
 ```
 
 ### 6. Repeat
@@ -177,7 +159,7 @@ Move to the next "To Do" issue and continue until all issues are complete.
 ## Notes
 - Replace `ISSUE_KEY` with the actual issue key (e.g., DEMO-11)
 - Always test changes before marking as Done
-- **Never overwrite the issue title or description** - use `add_comment()` instead
+- **Never overwrite the issue title or description** - use `jira_client.py add-comment` instead
 - **Test procedures must be runnable** - include actual commands that can be copy-pasted to repeat the test
 - **Document any issues encountered** - even if solved, this helps future debugging
 - Always document test procedure and results as a comment before transitioning to Done

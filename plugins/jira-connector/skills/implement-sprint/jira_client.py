@@ -3,8 +3,9 @@ Self-contained Jira Client for the implement-sprint skill.
 Loads configuration from config.json in the skill directory.
 """
 
+import argparse
 import json
-import os
+import sys
 import requests
 from requests.auth import HTTPBasicAuth
 from pathlib import Path
@@ -403,3 +404,158 @@ class JiraClient:
         )
         response.raise_for_status()
         return True
+
+
+def get_description_text(description: dict) -> str:
+    """Extract plain text from Atlassian Document Format (ADF) description.
+
+    Args:
+        description: The ADF description dict from a Jira issue
+
+    Returns:
+        Plain text extracted from the description
+    """
+    if not description:
+        return "No description"
+
+    text_parts = []
+    for content in description.get("content", []):
+        if content.get("type") == "paragraph":
+            for item in content.get("content", []):
+                if item.get("type") == "text":
+                    text_parts.append(item.get("text", ""))
+
+    return " ".join(text_parts) if text_parts else "No description"
+
+
+# =============================================================================
+# CLI Interface
+# =============================================================================
+
+def cmd_status(args):
+    """Show configuration status and active sprint issues."""
+    status = get_config_status()
+    if not status.startswith("CONFIGURED"):
+        print(f"CONFIG_STATUS: {status}")
+        return 1
+
+    try:
+        client = JiraClient()
+        result = client.get_active_sprint_issues()
+
+        if not result:
+            print("No active sprint found.")
+            return 0
+
+        sprint = result["sprint"]
+        issues = result["issues"]
+
+        print(f"Sprint: {sprint['name']}")
+        for issue in issues:
+            f = issue["fields"]
+            issue_status = f["status"]["name"]
+            print(f"{issue['key']} [{issue_status}]: {f['summary']}")
+        return 0
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def cmd_get_issue(args):
+    """Get detailed information for a specific issue."""
+    if not is_configured():
+        print("ERROR: Jira not configured. Please set up config.json first.")
+        return 1
+
+    try:
+        client = JiraClient()
+        issue = client.get_issue(args.issue_key)
+        fields = issue["fields"]
+
+        print(f"Issue: {issue['key']}")
+        print(f"Summary: {fields['summary']}")
+        print(f"Status: {fields['status']['name']}")
+        print(f"Type: {fields['issuetype']['name']}")
+        print(f"Description: {get_description_text(fields.get('description'))}")
+        print(f"URL: https://{client.domain}/browse/{issue['key']}")
+        return 0
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def cmd_transition(args):
+    """Transition an issue to a new status."""
+    if not is_configured():
+        print("ERROR: Jira not configured.")
+        return 1
+
+    try:
+        client = JiraClient()
+        client.transition_issue(args.issue_key, args.status)
+        print(f"Transitioned {args.issue_key} to {args.status}")
+        return 0
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def cmd_add_comment(args):
+    """Add a comment to an issue."""
+    if not is_configured():
+        print("ERROR: Jira not configured.")
+        return 1
+
+    try:
+        client = JiraClient()
+        client.add_comment(args.issue_key, args.comment)
+        print(f"Comment added to {args.issue_key}")
+        return 0
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Jira client for the implement-sprint skill",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # status command
+    status_parser = subparsers.add_parser("status", help="Show config status and sprint issues")
+    status_parser.set_defaults(func=cmd_status)
+
+    # get-issue command
+    get_issue_parser = subparsers.add_parser("get-issue", help="Get issue details")
+    get_issue_parser.add_argument("issue_key", help="Issue key (e.g., DEMO-1)")
+    get_issue_parser.set_defaults(func=cmd_get_issue)
+
+    # transition command
+    transition_parser = subparsers.add_parser("transition", help="Transition issue to new status")
+    transition_parser.add_argument("issue_key", help="Issue key (e.g., DEMO-1)")
+    transition_parser.add_argument("status", help="Target status (e.g., 'In Progress', 'Done')")
+    transition_parser.set_defaults(func=cmd_transition)
+
+    # add-comment command
+    comment_parser = subparsers.add_parser("add-comment", help="Add comment to issue")
+    comment_parser.add_argument("issue_key", help="Issue key (e.g., DEMO-1)")
+    comment_parser.add_argument("comment", help="Comment text")
+    comment_parser.set_defaults(func=cmd_add_comment)
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        return 1
+
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
