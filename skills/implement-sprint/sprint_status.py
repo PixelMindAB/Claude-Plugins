@@ -10,9 +10,8 @@ from jira_client import JiraClient, is_configured, get_config_status
 
 def main():
     status = get_config_status()
-    if status != "CONFIGURED":
+    if not status.startswith("CONFIGURED"):
         print(f"CONFIG_STATUS: {status}")
-        print("Please configure config.json with your Jira credentials.")
         return
 
     try:
