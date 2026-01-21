@@ -135,25 +135,27 @@ import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/skills/implement-sprint')
 from jira_client import JiraClient
 client = JiraClient()
 client.add_comment('ISSUE_KEY', '''## Implementation
-- [Files created/modified]
-- [What was done]
+- Created file: example.py
+- Location: /path/to/example.py
+- Content: Brief description of what was added/changed
 
 ## Issues Encountered
-- [Any problems hit during implementation and how they were solved]
-- [Or \"None\" if no issues]
+None (or describe any problems and how they were resolved)
 
 ## Test Procedure
 Run the following commands to verify:
 \`\`\`bash
-[actual runnable command 1]
-[actual runnable command 2]
+ls -la /path/to/example.py
+python /path/to/example.py
 \`\`\`
 
-Expected output: [what should be seen]
+Expected output:
+- First command: File exists with expected size
+- Second command: Expected behavior description
 
-## Test Result: PASSED/FAILED
-- [Actual output observed]
-- [Details]''')
+## Test Result: PASSED
+- File exists: Yes (with details)
+- Functionality verified: Description of what was confirmed''')
 print('Comment added')
 "
 ```
